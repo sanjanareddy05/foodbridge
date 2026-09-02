@@ -15,6 +15,13 @@ export const roleConfig = {
   volunteer: {label:'Volunteer',  color:'#a78bfa',bg:'rgba(167,139,250,0.12)'},
 }
 
+export const roleViews = {
+  ngo:       ['dashboard','listings','tracking','volunteers','impact'],
+  restaurant:['dashboard','listings','add','tracking','impact'],
+  volunteer: ['dashboard','tracking','impact'],
+  admin:     ['dashboard','listings','add','tracking','volunteers','impact'],
+}
+
 export const notifConfig = {
   urgent:  {color:'#ef4444',bg:'rgba(239,68,68,0.1)',  icon:'⚡'},
   tracking:{color:'#3b82f6',bg:'rgba(59,130,246,0.1)', icon:'📍'},

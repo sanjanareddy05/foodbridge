@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import { useRouteOptimiser } from '../hooks/useAI.js'
+import { api, tokens } from '../lib/api'
 import { Card, CardHeader, CardBody, Button, Badge, EmptyState, Spinner, SectionTitle } from '../components/ui/index.jsx'
 import { vehicleIcon } from '../utils/helpers'
 
@@ -12,8 +13,24 @@ const V_STATUS = {
 
 export default function Volunteers() {
   const { state } = useApp()
+  const [volunteers, setVolunteers] = useState(state.volunteers)
   const { route, optimising, optimise, reset } = useRouteOptimiser()
   const [selected, setSelected] = useState(null)
+
+  useEffect(() => {
+    if (!tokens.access) return
+    api.get('/volunteers').then((rows) => {
+      setVolunteers(rows.map((vol) => ({
+        ...vol,
+        avatar: vol.name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase(),
+        status: vol.is_available ? 'active' : 'offline',
+        deliveries: vol.total_deliveries,
+        kgDelivered: vol.kg_delivered,
+      })))
+    }).catch(() => {
+      // Keep the demo list visible if the live request is unavailable.
+    })
+  }, [])
 
   const handleOptimise = (vol) => {
     setSelected(vol.id)
@@ -29,13 +46,13 @@ export default function Volunteers() {
       {/* ── Volunteer list ── */}
       <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <SectionTitle subtitle={`${state.volunteers.filter(v=>v.status==='active').length} available · ${state.volunteers.filter(v=>v.status==='busy').length} on pickup`}>
+          <SectionTitle subtitle={`${volunteers.filter(v=>v.status==='active').length} available · ${volunteers.filter(v=>v.status==='busy').length} on pickup`}>
             Volunteer network
           </SectionTitle>
-          <Badge color="#22c55e">{state.volunteers.length} registered</Badge>
+          <Badge color="#22c55e">{volunteers.length} registered</Badge>
         </div>
 
-        {state.volunteers.map(vol => {
+        {volunteers.map(vol => {
           const ss       = V_STATUS[vol.status] || V_STATUS.offline
           const assigned = state.listings.find(l => l.assignedVolunteer === vol.name && l.status === 'in-transit')
           const isSelected = selected === vol.id

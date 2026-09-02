@@ -21,6 +21,7 @@ interface RegisterData {
   password: string
   role:     'ngo' | 'restaurant' | 'volunteer'
   phone?:   string
+  vehicle?: 'car' | 'scooter' | 'bicycle' | 'van'
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)

@@ -1,5 +1,6 @@
 import React from 'react'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext.tsx'
 import App from './App.jsx'
 import LandingPage from './pages/LandingPage.jsx'
 import AuthPage from './pages/AuthPage.jsx'
@@ -11,5 +12,5 @@ const router = createBrowserRouter([
 ])
 
 export default function AppRoutes() {
-  return <RouterProvider router={router} />
+  return <AuthProvider><RouterProvider router={router} /></AuthProvider>
 }

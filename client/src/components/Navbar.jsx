@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useApp, ACTIONS } from '../context/AppContext.jsx'
-import { roleConfig } from '../utils/helpers'
+import { roleConfig, roleViews } from '../utils/helpers'
+import { useAuth } from '../context/AuthContext.tsx'
 
 const NAV = [
   { id:'dashboard',  label:'Dashboard',   icon:'◈' },
@@ -13,6 +14,7 @@ const NAV = [
 
 export default function Navbar() {
   const { state, dispatch, showToast } = useApp()
+  const { user, logout } = useAuth()
   const [roleOpen, setRoleOpen] = useState(false)
 
   const unread   = state.notifications.filter(n => !n.read).length
@@ -25,6 +27,7 @@ export default function Navbar() {
   }
 
   const availCount = state.listings.filter(l => l.status === 'available').length
+  const visibleNav = NAV.filter(item => (roleViews[state.role] || roleViews.ngo).includes(item.id))
 
   return (
     <>
@@ -43,7 +46,7 @@ export default function Navbar() {
 
         {/* Nav items */}
         <div style={{ display:'flex',gap:2,flex:1,justifyContent:'center' }}>
-          {NAV.map(item => {
+          {visibleNav.map(item => {
             const active = state.currentView === item.id
             return (
               <button key={item.id} onClick={() => setView(item.id)}
@@ -71,16 +74,16 @@ export default function Navbar() {
 
         {/* Right side */}
         <div style={{ display:'flex',alignItems:'center',gap:8,flexShrink:0 }}>
-          {/* Role switcher */}
+          {/* Role indicator */}
           <div style={{ position:'relative' }}>
-            <button onClick={() => setRoleOpen(o => !o)}
+            <button onClick={() => user ? undefined : setRoleOpen(o => !o)}
               style={{ display:'flex',alignItems:'center',gap:7,padding:'5px 12px 5px 9px',borderRadius:20,border:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.05)',color:'#fff',fontSize:12,fontWeight:500,cursor:'pointer',fontFamily:'inherit' }}
             >
               <span style={{ width:6,height:6,borderRadius:'50%',background:rc.color,flexShrink:0 }} />
               {rc.label}
-              <span style={{ fontSize:9,opacity:0.45,marginLeft:2 }}>▾</span>
+              {!user && <span style={{ fontSize:9,opacity:0.45,marginLeft:2 }}>▾</span>}
             </button>
-            {roleOpen && (
+            {roleOpen && !user && (
               <div style={{ position:'absolute',top:38,right:0,background:'#161616',border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,overflow:'hidden',minWidth:160,boxShadow:'0 8px 32px rgba(0,0,0,0.6)',zIndex:300 }}>
                 {['ngo','restaurant','volunteer'].map(r => (
                   <button key={r} onClick={() => setRole(r)}
@@ -94,6 +97,10 @@ export default function Navbar() {
               </div>
             )}
           </div>
+
+          {user && <button onClick={() => logout().then(() => { window.location.href = '/auth' })}
+            style={{ padding:'5px 10px',borderRadius:8,border:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.04)',color:'rgba(255,255,255,0.6)',fontSize:12,cursor:'pointer',fontFamily:'inherit' }}
+          >Sign out</button>}
 
           {/* Notification bell */}
           <button onClick={() => setView('dashboard')}

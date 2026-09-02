@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { useApp, ACTIONS } from '../context/AppContext.jsx'
 import { useListingActions } from '../hooks'
+import { tokens } from '../lib/api'
 import { Card, CardHeader, Button, Badge, SpoilageBar, EmptyState } from '../components/ui/index.jsx'
 import { statusConfig, spoilageColor, minsUntilDeadline, urgencyScore } from '../utils/helpers'
 import { FOOD_TYPES } from '../data/mockData'
@@ -15,7 +16,7 @@ function AcceptModal({ listing, onClose }) {
 
   const confirm = () => {
     if (!vid) return
-    if (accept) {
+    if (accept && tokens.access) {
       accept(listing.id, vid).then(() => {
         showToast(`${listing.name} assigned`, 'success')
         onClose()

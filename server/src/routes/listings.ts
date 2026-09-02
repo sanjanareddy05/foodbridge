@@ -238,7 +238,7 @@ router.post('/:id/accept', authenticate, requireRole('ngo', 'admin'), async (req
       const pickupResult = await client.query<{ id: string }>(
         `INSERT INTO pickups (listing_id, volunteer_id, ngo_id, current_step)
          SELECT $1, vp.id, $2, 'accepted'
-         FROM volunteer_profiles vp WHERE vp.user_id = $3
+         FROM volunteer_profiles vp WHERE vp.id = $3
          RETURNING *`,
         [req.params.id, ngo.id, volunteerId]
       )

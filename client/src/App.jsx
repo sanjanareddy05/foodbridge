@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { AppProvider, useApp } from './context/AppContext.jsx'
+import { useAuth } from './context/AuthContext.tsx'
+import { roleViews } from './utils/helpers'
 import Navbar from './components/Navbar.jsx'
 import Toast from './components/Toast.jsx'
 import Dashboard  from './pages/Dashboard.jsx'
@@ -14,13 +16,19 @@ const PAGES = { dashboard: Dashboard, listings: Listings, add: AddListing, track
 
 function AppShell() {
   const { state, dispatch } = useApp()
+  const { user } = useAuth()
   const location = useLocation()
+
+  useEffect(() => {
+    if (user?.role && user.role !== state.role) dispatch({ type: 'SET_ROLE', payload: user.role })
+  }, [user?.role, state.role, dispatch])
 
   useEffect(() => {
     const path = location.pathname.split('/').filter(Boolean)
     const view = path[1] || 'dashboard'
-    if (view && PAGES[view]) dispatch({ type: 'SET_VIEW', payload: view })
-  }, [location.pathname, dispatch])
+    const views = roleViews[state.role] || roleViews.ngo
+    dispatch({ type: 'SET_VIEW', payload: views.includes(view) && PAGES[view] ? view : 'dashboard' })
+  }, [location.pathname, state.role, dispatch])
 
   return (
     <div style={{ minHeight:'100vh',background:'linear-gradient(180deg, #060606 0%, #0a0a0a 100%)',color:'#fff',fontFamily:"'Inter',system-ui,sans-serif" }}>
@@ -39,5 +47,6 @@ function AppShell() {
 }
 
 export default function App() {
-  return <AppProvider><AppShell /></AppProvider>
+  const { user } = useAuth()
+  return <AppProvider initialRole={user?.role ?? 'ngo'}><AppShell /></AppProvider>
 }

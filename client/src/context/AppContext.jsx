@@ -48,8 +48,8 @@ function reducer(state, {type, payload}) {
 }
 
 const AppContext = createContext(null)
-export function AppProvider({children}) {
-  const [state, dispatch] = useReducer(reducer, initialState)
+export function AppProvider({children, initialRole='ngo'}) {
+  const [state, dispatch] = useReducer(reducer, { ...initialState, role: initialRole })
   const showToast = useCallback((message, variant='success') => {
     dispatch({type:ACTIONS.SET_TOAST,payload:{message,variant}})
     setTimeout(()=>dispatch({type:ACTIONS.SET_TOAST,payload:null}),3500)

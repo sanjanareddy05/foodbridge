@@ -2,10 +2,33 @@ import React from 'react'
 import { useApp, ACTIONS } from '../context/AppContext.jsx'
 import { StatCard, Card, CardHeader, CardBody, SpoilageBar } from '../components/ui/index.jsx'
 import { statusConfig, notifConfig, timeAgo, spoilageColor } from '../utils/helpers'
+import { roleConfig } from '../utils/helpers'
 
 export default function Dashboard() {
   const { state, dispatch, showToast } = useApp()
   const { impact, listings, notifications } = state
+  const role = state.role
+  const roleLabel = roleConfig[role]?.label || 'Workspace'
+  const stats = role === 'restaurant'
+    ? [
+        ['🍽️', 'Meals donated today', impact.mealsToday, '↑ 18% vs yesterday'],
+        ['📋', 'Your active listings', listings.filter(l => l.status === 'available').length, `${listings.filter(l => l.status === 'in-transit').length} in transit`],
+        ['🛵', 'Pickup teams active', impact.volunteersActive, 'Assigned to your listings'],
+        ['⚖️', 'Food donated (MTD)', `${(impact.kgRescuedMTD/1000).toFixed(1)}t`, '↑ this week'],
+      ]
+    : role === 'volunteer'
+      ? [
+          ['🛵', 'My active pickups', listings.filter(l => l.status === 'in-transit').length, 'Current assignments'],
+          ['📋', 'Available opportunities', listings.filter(l => l.status === 'available').length, 'Nearby listings'],
+          ['✓', 'Deliveries completed', impact.mealsToday, 'This month'],
+          ['⚖️', 'Food delivered (MTD)', `${(impact.kgRescuedMTD/1000).toFixed(1)}t`, '↑ this week'],
+        ]
+      : [
+          ['🍽️', 'Meals saved today', impact.mealsToday, '↑ 18% vs yesterday'],
+          ['📋', 'Active listings', listings.filter(l => l.status === 'available').length, `${listings.filter(l => l.status === 'in-transit').length} in transit`],
+          ['🛵', 'Volunteers active', impact.volunteersActive, '2 pending assignment'],
+          ['⚖️', 'Food rescued (MTD)', `${(impact.kgRescuedMTD/1000).toFixed(1)}t`, '↑ this week'],
+        ]
 
   const markRead = id => dispatch({ type: ACTIONS.MARK_READ, payload: id })
   const markAll  = () => { dispatch({ type: ACTIONS.MARK_ALL_READ }); showToast('All notifications marked read', 'info') }
@@ -15,11 +38,14 @@ export default function Dashboard() {
     <div style={{ display:'flex',flexDirection:'column',gap:18,animation:'fade-in 0.25s ease' }}>
 
       {/* ── Stat row ── */}
-      <div style={{ display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12 }}>
-        <StatCard icon="🍽️" label="Meals saved today"   value={impact.mealsToday}  delta="↑ 18% vs yesterday" deltaUp />
-        <StatCard icon="📋" label="Active listings"      value={listings.filter(l=>l.status==='available').length} delta={`${listings.filter(l=>l.status==='in-transit').length} in transit`} />
-        <StatCard icon="🛵" label="Volunteers active"    value={impact.volunteersActive} delta="2 pending assignment" />
-        <StatCard icon="⚖️" label="Food rescued (MTD)"   value={`${(impact.kgRescuedMTD/1000).toFixed(1)}t`} delta="↑ this week" deltaUp />
+      <div>
+        <div style={{ marginBottom:12 }}>
+          <div style={{ fontSize:22,fontWeight:800 }}>{roleLabel} dashboard</div>
+          <div style={{ fontSize:13,color:'rgba(255,255,255,0.4)',marginTop:4 }}>Rescue operations for your {roleLabel.toLowerCase()} workspace</div>
+        </div>
+        <div style={{ display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12 }}>
+        {stats.map(([icon,label,value,delta]) => <StatCard key={label} icon={icon} label={label} value={value} delta={delta} deltaUp />)}
+        </div>
       </div>
 
       {/* ── Notifications + Map ── */}
@@ -61,7 +87,7 @@ export default function Dashboard() {
         {/* Live Map SVG */}
         <Card>
           <CardHeader>
-            <span style={{ fontSize:14,fontWeight:700,color:'#fff' }}>Live map — 5 km radius</span>
+            <span style={{ fontSize:14,fontWeight:700,color:'#fff' }}>{roleLabel} live map — 5 km radius</span>
             <span style={{ display:'flex',alignItems:'center',gap:6,fontSize:12,color:'#4ade80',fontWeight:600 }}>
               <span style={{ width:6,height:6,borderRadius:'50%',background:'#4ade80',animation:'pulse-dot 2s infinite',display:'inline-block' }} />Live
             </span>
@@ -92,7 +118,7 @@ export default function Dashboard() {
             <circle cx="200" cy="130" r="20" fill="#16a34a" opacity="0.15"/>
             <circle cx="200" cy="130" r="13" fill="#16a34a"/>
             <text x="200" y="135" textAnchor="middle" fontSize="11" fill="white">★</text>
-            <text x="200" y="151" textAnchor="middle" fill="#4ade80" fontSize="8" fontWeight="700" fontFamily="system-ui">Your NGO</text>
+            <text x="200" y="151" textAnchor="middle" fill="#4ade80" fontSize="8" fontWeight="700" fontFamily="system-ui">Your {roleLabel}</text>
             <circle cx="162" cy="120" r="8" fill="#3b82f6" opacity="0.9"/>
             <text x="162" y="124" textAnchor="middle" fontSize="7">🛵</text>
             <rect x="8" y="8" width="108" height="54" rx="6" fill="#111" stroke="#222" strokeWidth="0.5"/>

@@ -15,6 +15,7 @@ const RegisterSchema = z.object({
   email:    z.string().email(),
   password: z.string().min(8).max(72),
   role:     z.enum(['ngo', 'restaurant', 'volunteer']),
+  vehicle:  z.enum(['car', 'scooter', 'bicycle', 'van']).optional(),
   phone:    z.string().optional(),
 })
 
@@ -40,6 +41,27 @@ router.post('/register', async (req: Request, res: Response, next: NextFunction)
        RETURNING id, name, email, role`,
       [body.name, body.email, passwordHash, body.role, body.phone ?? null]
     )
+    if (body.role === 'volunteer') {
+      await db.query(
+        `INSERT INTO volunteer_profiles (user_id, vehicle)
+         VALUES ($1, $2)`,
+        [user.id, body.vehicle ?? 'bicycle']
+      )
+    } else {
+      await db.query(
+        `INSERT INTO organisations (user_id, name, org_type, address, city, contact_email, contact_phone)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          user.id,
+          `${body.name}'s ${body.role === 'ngo' ? 'NGO' : 'Restaurant'}`,
+          body.role,
+          'Address to be completed',
+          'City to be completed',
+          body.email,
+          body.phone ?? null,
+        ]
+      )
+    }
 
     const accessToken  = signAccessToken({ userId: user.id, role: user.role, email: user.email })
     const refreshToken = generateRefreshToken()

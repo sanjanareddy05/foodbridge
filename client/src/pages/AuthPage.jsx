@@ -1,15 +1,22 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, Card, CardBody, Input, FieldLabel } from '../components/ui/index.jsx'
+import { useAuth } from '../context/AuthContext.tsx'
 
 export default function AuthPage() {
   const navigate = useNavigate()
+  const { login, register, loading, error, clearError } = useAuth()
   const [mode, setMode] = useState('login')
-  const [form, setForm] = useState({ name:'', email:'', password:'', role:'ngo' })
+  const [form, setForm] = useState({ name:'', email:'', password:'', role:'ngo', vehicle:'bicycle' })
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault()
-    navigate('/app/dashboard')
+    clearError()
+    try {
+      if (mode === 'login') await login(form.email, form.password)
+      else await register({ name: form.name, email: form.email, password: form.password, role: form.role, vehicle: form.vehicle })
+      navigate('/app/dashboard')
+    } catch { /* AuthContext exposes the server error in the form. */ }
   }
 
   return (
@@ -43,6 +50,17 @@ export default function AuthPage() {
                     <option value="volunteer">Volunteer</option>
                   </select>
                 </div>
+                {form.role === 'volunteer' && (
+                  <div>
+                    <FieldLabel>Vehicle</FieldLabel>
+                    <select value={form.vehicle} onChange={(e) => setForm({ ...form, vehicle: e.target.value })} style={{ width:'100%', padding:'9px 12px', borderRadius:8, border:'1px solid rgba(255,255,255,0.1)', background:'#1a1a1a', color:'#fff' }}>
+                      <option value="bicycle">Bicycle</option>
+                      <option value="scooter">Scooter</option>
+                      <option value="car">Car</option>
+                      <option value="van">Van</option>
+                    </select>
+                  </div>
+                )}
               </>
             )}
 
@@ -54,7 +72,8 @@ export default function AuthPage() {
               <FieldLabel>Password</FieldLabel>
               <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••••••" />
             </div>
-            <Button type="submit" size="lg" style={{ marginTop: 4 }}>{mode === 'login' ? 'Sign in to FoodBridge' : 'Create account'}</Button>
+            {error && <div role="alert" style={{ color:'#fca5a5', background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:8, padding:'9px 12px', fontSize:12 }}>{error}</div>}
+            <Button type="submit" size="lg" disabled={loading} style={{ marginTop: 4 }}>{loading ? 'Please wait…' : mode === 'login' ? 'Sign in to FoodBridge' : 'Create account'}</Button>
           </form>
         </CardBody>
       </Card>
