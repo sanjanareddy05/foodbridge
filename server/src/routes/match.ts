@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import { z } from 'zod'
 import { db } from '../db/pool'
+import { authenticate, requireRole } from '../middleware/auth'
 import { ok, ValidationError } from '../utils/response'
 import logger from '../utils/logger'
 
@@ -15,7 +16,7 @@ const MatchSchema = z.object({
 })
 
 // POST /api/match
-router.post('/', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/', authenticate, requireRole('ngo', 'admin'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     logger.debug('Match request raw', { raw: String((req as any).rawBody ?? '').slice(0,1000) })
     const body = MatchSchema.parse(req.body)

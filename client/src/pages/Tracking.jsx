@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useApp, ACTIONS } from '../context/AppContext.jsx'
+import { useAuth } from '../context/AuthContext.tsx'
 import { Card, CardHeader, CardBody, Button, Badge, SpoilageBar, EmptyState, LiveBadge, Spinner } from '../components/ui/index.jsx'
 import { spoilageColor, generateQRCode } from '../utils/helpers'
 
@@ -119,6 +120,7 @@ function QRModal({ listing, onClose }) {
 
 export default function Tracking() {
   const { state, dispatch, showToast } = useApp()
+  const { user } = useAuth()
   const [qrTarget, setQrTarget] = useState(null)
 
   const active  = state.listings.filter(l => l.status === 'in-transit')
@@ -154,8 +156,8 @@ export default function Tracking() {
                 </div>
               </div>
               <div style={{ display:'flex',gap:8 }}>
-                <Button variant="ghost" size="sm" onClick={() => setQrTarget(l)}>📱 QR Verify</Button>
-                {l.qrVerified && l.status !== 'delivered' && (
+                {(user?.role === 'volunteer' || user?.role === 'admin') && <Button variant="ghost" size="sm" onClick={() => setQrTarget(l)}>📱 QR Verify</Button>}
+                {(user?.role === 'volunteer' || user?.role === 'admin') && l.qrVerified && l.status !== 'delivered' && (
                   <Button size="sm" onClick={() => {
                     dispatch({ type: ACTIONS.MARK_DELIVERED, payload: { listingId: l.id } })
                     showToast(`${l.name} delivered ✓`, 'success')

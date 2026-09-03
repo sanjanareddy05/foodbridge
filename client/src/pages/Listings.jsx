@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react'
 import { useApp, ACTIONS } from '../context/AppContext.jsx'
+import { useAuth } from '../context/AuthContext.tsx'
 import { useListingActions } from '../hooks'
-import { tokens } from '../lib/api'
+import { api, tokens } from '../lib/api'
 import { Card, CardHeader, Button, Badge, SpoilageBar, EmptyState } from '../components/ui/index.jsx'
 import { statusConfig, spoilageColor, minsUntilDeadline, urgencyScore } from '../utils/helpers'
 import { FOOD_TYPES } from '../data/mockData'
@@ -13,10 +14,11 @@ function AcceptModal({ listing, onClose }) {
   const [suggestions, setSuggestions] = useState([])
   const [suggestLoading, setSuggestLoading] = useState(false)
   const avail = state.volunteers.filter(v => v.status === 'active')
+  const isPersistedListing = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(listing.id)
 
   const confirm = () => {
     if (!vid) return
-    if (accept && tokens.access) {
+    if (accept && tokens.access && isPersistedListing) {
       accept(listing.id, vid).then(() => {
         showToast(`${listing.name} assigned`, 'success')
         onClose()
@@ -35,8 +37,8 @@ function AcceptModal({ listing, onClose }) {
   return (
     <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.72)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:500,backdropFilter:'blur(5px)' }} onClick={onClose}>
       <div style={{ background:'#141414',border:'1px solid rgba(255,255,255,0.1)',borderRadius:16,padding:'1.75rem',width:420,maxWidth:'92vw',animation:'fade-in 0.2s ease' }} onClick={e=>e.stopPropagation()}>
-        <div style={{ fontSize:17,fontWeight:700,color:'#fff',marginBottom:4 }}>Accept pickup</div>
-        <div style={{ fontSize:13,color:'rgba(255,255,255,0.4)',marginBottom:20 }}>Assign a volunteer to collect this listing</div>
+        <div style={{ fontSize:17,fontWeight:700,color:'#fff',marginBottom:4 }}>Coordinate pickup</div>
+        <div style={{ fontSize:13,color:'rgba(255,255,255,0.4)',marginBottom:20 }}>Assign an available volunteer to collect this listing</div>
 
         {/* Listing summary */}
         <div style={{ background:'#1a1a1a',borderRadius:10,padding:'12px 14px',marginBottom:18 }}>
@@ -51,9 +53,16 @@ function AcceptModal({ listing, onClose }) {
             <Button size="sm" variant="ghost" onClick={async ()=>{
               setSuggestLoading(true)
               try {
-                const resp = await fetch('/api/match', { method:'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ listingId: listing.id, limit:5 }) })
-                const json = await resp.json()
-                if (resp.ok) setSuggestions(json.suggestions)
+                if (isPersistedListing) {
+                  const data = await api.post('/match', { listingId: listing.id, limit:5 })
+                  setSuggestions(data.suggestions ?? [])
+                } else {
+                  setSuggestions(avail.map((v, index) => ({
+                    volunteerId: v.id, name: v.name, vehicle: v.vehicle,
+                    rating: v.rating, etaMin: 8 + index * 6,
+                    distanceKm: (1.2 + index * 0.8).toFixed(1), score: 95 - index * 10,
+                  })))
+                }
               } catch (e) { console.error(e) }
               setSuggestLoading(false)
             }}>{suggestLoading ? 'Suggesting…' : 'Suggest volunteers'}</Button>
@@ -99,6 +108,7 @@ function AcceptModal({ listing, onClose }) {
 
 export default function Listings() {
   const { state, dispatch } = useApp()
+  const { user } = useAuth()
   const [target, setTarget] = useState(null)
   const [search, setSearch] = useState('')
   const { filter } = state
@@ -118,6 +128,7 @@ export default function Listings() {
   }, [state.listings, filter, search])
 
   const setF = p => dispatch({ type: ACTIONS.SET_FILTER, payload: p })
+  const canCoordinatePickup = user?.role === 'ngo' || user?.role === 'admin'
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14,animation:'fade-in 0.25s ease' }}>
@@ -206,7 +217,8 @@ export default function Listings() {
                 <span style={{ fontSize:12,color:'rgba(255,255,255,0.28)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>
                   {l.assignedVolunteer ? `👤 ${l.assignedVolunteer}` : `⚠️ ${l.allergens}`}
                 </span>
-                {l.status === 'available'    && <Button onClick={() => setTarget(l)} size="sm">Accept pickup</Button>}
+                {l.status === 'available' && canCoordinatePickup && <Button onClick={() => setTarget(l)} size="sm">Coordinate pickup</Button>}
+                {l.status === 'available' && user?.role === 'restaurant' && <Badge color="#60a5fa">Awaiting NGO</Badge>}
                 {l.status === 'in-transit'   && <Badge color="#3b82f6">🔵 En route</Badge>}
                 {l.status === 'delivered'    && <Badge color="#8b5cf6">✓ Delivered</Badge>}
               </div>

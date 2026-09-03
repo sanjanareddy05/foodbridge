@@ -223,6 +223,14 @@ router.post('/:id/accept', authenticate, requireRole('ngo', 'admin'), async (req
       if (!listing) throw new NotFoundError('Listing')
       if (listing.status !== 'available') throw new ConflictError('Listing is no longer available')
 
+      const volunteerResult = await client.query<{ id: string }>(
+        `SELECT id FROM volunteer_profiles
+         WHERE id = $1 AND is_available = true
+         FOR SHARE`,
+        [volunteerId]
+      )
+      if (!volunteerResult.rows[0]) throw new ConflictError('Selected volunteer is not available')
+
       // Generate QR code
       const qrCode = generateQRCode(req.params.id)
 
@@ -271,6 +279,15 @@ router.post('/:id/verify-qr', authenticate, requireRole('volunteer', 'admin'), a
       [req.params.id]
     )
     if (!listing) throw new NotFoundError('Listing')
+    if (req.user!.role !== 'admin') {
+      const assigned = await db.queryOne(
+        `SELECT p.id FROM pickups p
+         JOIN volunteer_profiles vp ON vp.id = p.volunteer_id
+         WHERE p.listing_id = $1 AND vp.user_id = $2`,
+        [req.params.id, req.user!.userId]
+      )
+      if (!assigned) throw new ForbiddenError('This pickup is not assigned to you')
+    }
     if (listing.qr_code !== qrCode) throw new ConflictError('Invalid QR code')
     if (!verifyQRCode(qrCode, req.params.id)) throw new ConflictError('QR code verification failed')
 
@@ -302,8 +319,17 @@ router.post('/:id/verify-qr', authenticate, requireRole('volunteer', 'admin'), a
 })
 
 // ─── POST /listings/:id/deliver ───────────────────────────────────────────────
-router.post('/:id/deliver', authenticate, requireRole('volunteer', 'ngo', 'admin'), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/deliver', authenticate, requireRole('volunteer', 'admin'), async (req: Request, res: Response, next: NextFunction) => {
   try {
+    if (req.user!.role !== 'admin') {
+      const assigned = await db.queryOne(
+        `SELECT p.id FROM pickups p
+         JOIN volunteer_profiles vp ON vp.id = p.volunteer_id
+         WHERE p.listing_id = $1 AND vp.user_id = $2`,
+        [req.params.id, req.user!.userId]
+      )
+      if (!assigned) throw new ForbiddenError('This pickup is not assigned to you')
+    }
     await db.withTransaction(async (client) => {
       await client.query(
         `UPDATE listings SET status = 'delivered', delivered_at = NOW() WHERE id = $1`,
