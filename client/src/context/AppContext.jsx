@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useReducer, useCallback } from 'react'
+import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react'
 import { initialListings, initialNGOs, initialVolunteers, initialNotifications, impactData } from '../data/mockData'
+import { api, tokens } from '../lib/api'
 
 export const ACTIONS = {
   ADD_LISTING:'ADD_LISTING', ACCEPT_LISTING:'ACCEPT_LISTING', VERIFY_QR:'VERIFY_QR',
   MARK_DELIVERED:'MARK_DELIVERED', MARK_READ:'MARK_READ', MARK_ALL_READ:'MARK_ALL_READ',
-  SET_ROLE:'SET_ROLE', SET_VIEW:'SET_VIEW', SET_FILTER:'SET_FILTER', SET_TOAST:'SET_TOAST',
+  SET_ROLE:'SET_ROLE', SET_VIEW:'SET_VIEW', SET_FILTER:'SET_FILTER', SET_TOAST:'SET_TOAST', SET_VOLUNTEERS:'SET_VOLUNTEERS',
 }
 
 const initialState = {
@@ -43,6 +44,7 @@ function reducer(state, {type, payload}) {
     case ACTIONS.SET_VIEW:   return{...state,currentView:payload}
     case ACTIONS.SET_FILTER: return{...state,filter:{...state.filter,...payload}}
     case ACTIONS.SET_TOAST:  return{...state,toast:payload}
+    case ACTIONS.SET_VOLUNTEERS: return{...state,volunteers:payload}
     default: return state
   }
 }
@@ -50,6 +52,26 @@ function reducer(state, {type, payload}) {
 const AppContext = createContext(null)
 export function AppProvider({children, initialRole='ngo'}) {
   const [state, dispatch] = useReducer(reducer, { ...initialState, role: initialRole })
+  useEffect(() => {
+    if (!tokens.access) return
+
+    api.get('/volunteers').then(rows => {
+      dispatch({ type: ACTIONS.SET_VOLUNTEERS, payload: rows.map(vol => ({
+        id: vol.id,
+        name: vol.name,
+        phone: vol.phone,
+        vehicle: vol.vehicle ? `${vol.vehicle[0].toUpperCase()}${vol.vehicle.slice(1)}` : 'Vehicle not set',
+        rating: Number(vol.rating) || 0,
+        deliveries: Number(vol.total_deliveries) || 0,
+        kgDelivered: Number(vol.kg_delivered) || 0,
+        status: vol.is_available ? 'active' : 'busy',
+        avatar: vol.name.split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase(),
+        joinedAt: vol.created_at,
+      })) })
+    }).catch(() => {
+      // Keep the demo roster when the API is unavailable.
+    })
+  }, [])
   const showToast = useCallback((message, variant='success') => {
     dispatch({type:ACTIONS.SET_TOAST,payload:{message,variant}})
     setTimeout(()=>dispatch({type:ACTIONS.SET_TOAST,payload:null}),3500)
