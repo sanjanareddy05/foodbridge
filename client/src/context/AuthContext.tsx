@@ -68,9 +68,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
-    try { await api.post('/auth/logout', { refreshToken: tokens.refresh }) } catch { /* ignore */ }
-    tokens.clear()
-    setState({ user: null, loading: false, error: null })
+    const refreshToken = tokens.refresh
+
+    // Signing out must not be blocked by a failed or expired access token.
+    // In particular, do not refresh here: refreshing rotates the stored token
+    // and can leave that new token active when the logout retry uses the old one.
+    try {
+      await api.post('/auth/logout', { refreshToken }, false)
+    } catch { /* Local sign-out still succeeds if the server cannot be reached. */ }
+    finally {
+      tokens.clear()
+      setState({ user: null, loading: false, error: null })
+    }
   }, [])
 
   const clearError = useCallback(() => setState(s => ({ ...s, error: null })), [])

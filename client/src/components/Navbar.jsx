@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useApp, ACTIONS } from '../context/AppContext.jsx'
 import { roleConfig, roleViews } from '../utils/helpers'
 import { useAuth } from '../context/AuthContext.tsx'
@@ -15,6 +16,7 @@ const NAV = [
 export default function Navbar() {
   const { state, dispatch, showToast } = useApp()
   const { user, logout } = useAuth()
+  const navigate = useNavigate()
   const [roleOpen, setRoleOpen] = useState(false)
 
   const unread   = state.notifications.filter(n => !n.read).length
@@ -98,7 +100,7 @@ export default function Navbar() {
             )}
           </div>
 
-          {user && <button onClick={() => logout().then(() => { window.location.href = '/auth' })}
+          {user && <button onClick={async () => { await logout(); navigate('/auth', { replace: true }) }}
             style={{ padding:'5px 10px',borderRadius:8,border:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.04)',color:'rgba(255,255,255,0.6)',fontSize:12,cursor:'pointer',fontFamily:'inherit' }}
           >Sign out</button>}
 
